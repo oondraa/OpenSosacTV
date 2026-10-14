@@ -35,7 +35,7 @@ function Login() {
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  async function submit(requireStreamuj = true) {
+  async function submit(requireStreamuj = separate) {
     if (busy) return;
     const tu = separate ? form.tu : form.su;
     const tp = separate ? form.tp : form.sp;
@@ -55,8 +55,7 @@ function Login() {
       // Sosáč prošel, Streamuj ne: nejspíš jiné údaje na Streamuj.
       if (field === 'streamuj') {
         setSosacOk(true);
-        if (!separate) setSeparate(true);
-        message = `Sosáč je v pořádku, ale ${message.charAt(0).toLowerCase()}${message.slice(1)} Doplň údaje ze Streamuj, nebo pokračuj jen se Sosáčem (přehraje se jen ukázka).`;
+        message = `Sosáč je v pořádku, ale ${message.charAt(0).toLowerCase()}${message.slice(1)} Oprav údaje ze Streamuj, nebo pokračuj jen se Sosáčem.`;
       }
       setError({ field, message });
       void setFocus(field === 'streamuj' ? 'login-tu' : 'login-su');
@@ -108,7 +107,7 @@ function Login() {
             <Button variant="primary" focusKey="login-submit" label={busy ? 'Ověřuji…' : 'Přihlásit'} icon={<ArrowRightIcon weight="bold" />} onPress={() => void submit()} disabled={busy} />
             {sosacOk && <Button focusKey="login-sosac-only" label="Jen se Sosáčem" onPress={() => void submit(false)} disabled={busy} />}
             <Button
-              label={separate ? 'Stejné údaje pro oba' : 'Jiný účet na Streamuj'}
+              label={separate ? 'Jen Sosáč' : 'Mám i účet Streamuj'}
               onPress={() => {
                 setSeparate((v) => !v);
                 setError(undefined);
@@ -123,8 +122,8 @@ function Login() {
             />
           </FocusGroup>
           <p className="note" style={{ marginTop: '1.5rem' }}>
-            Video hostuje Streamuj.tv, proto se ověřuje i tam. Hesla se neukládají, v zařízení zůstávají jen jejich otisky a jdou
-            jen na Sosáč a Streamuj.
+            Stačí účet Sosáč. Filmy pak hraje přehrávač Streamuj, stejně jako na sosac.tv. Hesla se neukládají, v zařízení
+            zůstávají jen jejich otisky a jdou jen na Sosáč a Streamuj.
           </p>
         </div>
       </div>
@@ -164,7 +163,7 @@ function Settings() {
           <h1 className="display display--md">{session.sosac?.username}</h1>
           <div className="meta">
             <span className="tag" style={vipActive ? { background: 'rgba(48,209,88,0.18)' } : undefined}>
-              {!hasStreamuj ? 'Streamuj nepřipojen, přehraje se jen ukázka' : vipActive ? (vip ? `VIP do ${vip.toLocaleDateString('cs')}` : 'VIP aktivní') : 'Bez VIP, přehraje se jen ukázka'}
+              {!hasStreamuj ? 'Přehrává přehrávač Streamuj (jako sosac.tv)' : vipActive ? (vip ? `VIP do ${vip.toLocaleDateString('cs')}` : 'VIP aktivní') : 'Bez VIP, přehraje se jen ukázka'}
             </span>
             {hasStreamuj && <span>Streamuj: {session.streamuj?.username}</span>}
           </div>
@@ -246,7 +245,7 @@ function ConnectStreamuj({ open, onOpen, onDone }: { open: boolean; onOpen: () =
     <div className="bezel">
       <FocusGroup className="bezel__core" focusKey="connect-streamuj" style={{ padding: '1.75rem', display: 'grid', gap: '1rem' }}>
         <div className="group-title" style={{ margin: 0 }}>
-          Streamuj.tv <small>videa hostuje Streamuj, bez účtu tam se pustí jen ukázka</small>
+          Streamuj.tv <small>volitelné: vlastní přehrávač s pokračováním, výběrem kvality a ovládáním z TV</small>
         </div>
         {open ? (
           <>

@@ -12,14 +12,15 @@ import {
   WaveformIcon,
 } from '@phosphor-icons/react';
 import { pause as pauseNav, resume as resumeNav, setFocus, useFocusable } from '@noriginmedia/norigin-spatial-navigation';
-import { useEpisode, useMovie, usePlaybackSource, useRemoteKeys, useSerial, useVideoPlayer } from '../../app';
-import { formatEpisodeCode, STREAM_QUALITY_HEIGHT } from '../../api';
+import { useEpisode, useMovie, usePlaybackSource, useRemoteKeys, useSerial, useServices, useVideoPlayer } from '../../app';
+import { findNextEpisode, formatEpisodeCode, STREAM_QUALITY_HEIGHT } from '../../api';
 import type { Episode, PlayableItem, StreamVariant } from '../../api';
 import { Button } from '../components/Buttons';
 import { FocusGroup, Pressable } from '../components/focus';
 import { formatClock } from '../format';
 import { isRestart, play, recallItem } from '../itemStore';
 import { goBack } from '../router';
+import { useInitialFocus } from '../chrome';
 
 const HIDE_AFTER_MS = 4000;
 const SEEK_STEP = 10;
@@ -30,7 +31,79 @@ interface Props {
   serialId?: number;
 }
 
-export function Player({ kind, id, serialId }: Props) {
+/**
+ * Bez připojeného účtu Streamuj použije oficiální vložený přehrávač Streamuj,
+ * stejně jako web sosac.tv. Ten si vezme přihlášení na streamuj.tv, které má
+ * prohlížeč uložené, takže stačí účet Sosáč. Jinak vlastní přehrávač.
+ */
+export function Player(props: Props) {
+  const { hasStreamuj } = useServices();
+  return hasStreamuj ? <NativePlayer {...props} /> : <EmbedPlayer {...props} />;
+}
+
+function usePlayerItem({ kind, id, serialId }: Props) {
+  const movie = useMovie(kind === 'movie' ? id : undefined, kind === 'movie' ? recallItem('movie', id) : undefined);
+  const episode = useEpisode(kind === 'episode' ? id : undefined, kind === 'episode' ? recallItem('episode', id) : undefined);
+  const item: PlayableItem | undefined = kind === 'movie' ? movie.data : episode.data;
+  const sid = serialId ?? (item?.kind === 'episode' ? item.serialId : undefined);
+  const serial = useSerial(sid, sid ? recallItem('serial', sid) : undefined);
+  const title = item?.kind === 'episode' ? item.serialTitle ?? serial.serial?.title ?? item.title : item?.title;
+  const subtitle = item?.kind === 'episode' ? `${formatEpisodeCode(item.season, item.episode)} · ${item.episodeTitle}` : item?.year ? String(item.year) : undefined;
+  return { item, serial, title, subtitle, error: (kind === 'movie' ? movie.error : episode.error) as Error | null };
+}
+
+function EmbedPlayer(props: Props) {
+  const { settings } = useServices();
+  const { item, serial, title, subtitle, error } = usePlayerItem(props);
+  const next = item?.kind === 'episode' && serial.detail ? findNextEpisode(serial.detail, item) : undefined;
+
+  useInitialFocus(['embed-back'], [item?.id]);
+  useRemoteKeys((key) => {
+    if (key === 'back') {
+      goBack();
+      return true;
+    }
+  });
+
+  const src = item?.streamId
+    ? `https://${settings.streamingProvider}/video/${encodeURIComponent(item.streamId)}?remote=1&affid=0&width=${window.innerWidth}&height=${Math.max(320, window.innerHeight - 96)}`
+    : undefined;
+
+  return (
+    <div className="player player--embed">
+      <FocusGroup className="embed__bar" focusKey="embed-bar">
+        <Button focusKey="embed-back" ariaLabel="Zpět" icon={<CaretLeftIcon weight="bold" />} onPress={goBack} />
+        <div className="player__title">
+          <b>{title}</b>
+          {subtitle && <span>{subtitle}</span>}
+        </div>
+        <span className="player__spacer" />
+        <span className="note embed__hint">Přehrávač Streamuj · celé filmy, když jsi v prohlížeči přihlášený na streamuj.tv</span>
+        {next && (
+          <Button
+            label="Další díl"
+            icon={<SkipForwardIcon weight="fill" />}
+            onPress={() => play({ ...next, serialId: next.serialId ?? serial.serial?.id, serialTitle: next.serialTitle ?? serial.serial?.title }, { replace: true })}
+          />
+        )}
+      </FocusGroup>
+      {src ? (
+        <iframe
+          key={src}
+          className="embed__frame"
+          src={src}
+          title={title ?? 'Přehrávač'}
+          allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+          allowFullScreen
+        />
+      ) : (
+        <div className="player__center">{error ? <p className="lede">{error.message}</p> : item ? <p className="lede">Titul nemá přiřazený stream.</p> : <div className="spinner" />}</div>
+      )}
+    </div>
+  );
+}
+
+function NativePlayer({ kind, id, serialId }: Props) {
   const movie = useMovie(kind === 'movie' ? id : undefined, kind === 'movie' ? recallItem('movie', id) : undefined);
   const episode = useEpisode(kind === 'episode' ? id : undefined, kind === 'episode' ? recallItem('episode', id) : undefined);
   const item: PlayableItem | undefined = kind === 'movie' ? movie.data : episode.data;
