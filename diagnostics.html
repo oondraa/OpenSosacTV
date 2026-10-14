@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="cs">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Sosáč diagnostika</title>
+    <style>
+      body { font: 14px/1.5 system-ui, sans-serif; background: #111; color: #eee; max-width: 900px; margin: 0 auto; padding: 16px; }
+      fieldset { border: 1px solid #444; margin-bottom: 16px; }
+      input { margin: 2px 0; padding: 4px; width: 220px; }
+      button { padding: 6px 14px; }
+      .step { padding: 6px 8px; border-left: 3px solid #555; margin: 4px 0; white-space: pre-wrap; word-break: break-all; }
+      .ok { border-color: #3c3; } .fail { border-color: #e44; } .warn { border-color: #fa0; } .run { border-color: #48f; }
+      textarea { width: 100%; height: 220px; background: #000; color: #9f9; font: 12px monospace; }
+      video { width: 100%; max-height: 300px; background: #000; margin-top: 8px; }
+      small { color: #aaa; }
+    </style>
+  </head>
+  <body>
+    <h1>Sosáč diagnostika</h1>
+    <p>
+      Ověří s tvým účtem věci, které nejdou otestovat bez přihlášení: přihlášení, VIP, plný stream, titulky a hlavně
+      <b>jestli jde z prohlížeče ukládat pozici přehrávání</b>. Hesla se nikam neposílají kromě Sosáče a Streamuj, stejně jako v Kodi.
+    </p>
+    <form id="form">
+      <fieldset>
+        <legend>Účty</legend>
+        <input name="su" placeholder="Sosáč jméno" required /> <input name="sp" type="password" placeholder="Sosáč heslo" required /><br />
+        <input name="tu" placeholder="Streamuj jméno" required /> <input name="tp" type="password" placeholder="Streamuj heslo" required />
+      </fieldset>
+      <fieldset>
+        <legend>Testovací titul</legend>
+        <input name="movie" value="156" placeholder="ID filmu" /> <small>ID filmu pro test streamu a zápisu (156 = Avatar)</small><br />
+        <label><input type="checkbox" name="writes" checked style="width:auto" /> Testovat zápisy (dočasně změní pozici u testovacího filmu a vrátí ji zpět)</label>
+      </fieldset>
+      <button>Spustit diagnostiku</button>
+    </form>
+    <div id="steps"></div>
+    <video id="video" controls hidden></video>
+    <h3>Výsledek k odeslání</h3>
+    <small>Neobsahuje hesla ani hashe. Celé to zkopíruj a pošli.</small>
+    <textarea id="report" readonly></textarea>
+    <script type="module" src="/src/dev/diagnostics.ts"></script>
+  </body>
+</html>
