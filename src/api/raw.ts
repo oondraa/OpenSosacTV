@@ -119,9 +119,9 @@ export interface RawStreamujBase {
 }
 
 export interface RawStreamujCheckUser extends RawStreamujBase {
-  UID: number;
-  /** Unix timestamp konce VIP, 0 = žádné. */
-  expiration: number;
+  UID: number | string;
+  /** Konec VIP: unix čas, nebo text s datem. 0 = žádné. */
+  expiration: number | string;
   cookie: number | string;
 }
 

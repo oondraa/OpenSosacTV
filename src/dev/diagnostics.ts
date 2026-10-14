@@ -56,7 +56,8 @@ async function run(form: HTMLFormElement) {
   stepsEl.innerHTML = '';
   const f = new FormData(form);
   const su = String(f.get('su')).trim();
-  const tu = String(f.get('tu')).trim();
+  const tu = String(f.get('tu')).trim() || su;
+  if (!String(f.get('tp'))) f.set('tp', String(f.get('sp')));
   const movieId = Number(f.get('movie')) || 156;
   const testWrites = f.get('writes') === 'on';
 
@@ -87,10 +88,56 @@ async function run(form: HTMLFormElement) {
   const streamuj = new StreamujClient({ provider: settings.streamingProvider, credentials: streamujCreds, location: 1 });
   try {
     const acc = await streamuj.checkUser();
-    report.streamujAccount = { valid: acc.valid, vipUntil: acc.vipUntil?.toISOString() ?? null, message: acc.message ?? null };
-    s(acc.valid ? (acc.vipUntil && acc.vipUntil > new Date() ? 'ok' : 'warn') : 'fail', acc.valid ? `VIP do: ${acc.vipUntil?.toLocaleString('cs') ?? 'bez VIP'}` : acc.message ?? 'neplatný účet');
+    report.streamujAccount = {
+      resultCode: acc.resultCode,
+      valid: acc.valid,
+      vip: acc.vip,
+      hasUid: acc.userId > 0,
+      vipUntil: acc.vipUntil?.toISOString() ?? null,
+      message: acc.message ?? null,
+      // Jen tvar, ne hodnota: pomáhá odhalit e-mail místo jména apod.
+      usernameShape: { length: tu.length, hasAt: tu.includes('@'), hasSpace: /\s/.test(tu), hasUpper: /[A-Z]/.test(tu) },
+    };
+    s(acc.vip ? 'ok' : acc.valid ? 'warn' : 'fail', `result=${acc.resultCode} · ${acc.vip ? `VIP${acc.vipUntil ? ` do ${acc.vipUntil.toLocaleString('cs')}` : ''}` : acc.valid ? 'účet bez VIP' : acc.message ?? 'údaje nesedí'}`);
   } catch (e) {
     report.streamujAccount = errMsg(e);
+    s('fail', errMsg(e));
+  }
+
+  /* 3b. Varianty hesla. Kodi posílá md5 bez příznaku; zkusíme i další tvary. */
+  s = step('Streamuj: způsoby předání hesla');
+  try {
+    const plain = String(f.get('tp'));
+    const base = `https://${settings.streamingProvider}/json_api_player.php`;
+    const link = (await sosac.movie(movieId)).streamId!;
+    const variants: Record<string, Record<string, string>> = {
+      'md5': { password: streamujCreds.passwordHash },
+      'md5+flag': { password: streamujCreds.passwordHash, passwordinmd5: '1' },
+      'plain': { password: plain },
+    };
+    const results: Record<string, unknown> = {};
+    for (const [name, extra] of Object.entries(variants)) {
+      const check = new URL(base);
+      check.search = new URLSearchParams({ action: 'check-user', login: tu, ...extra }).toString();
+      const links = new URL(base);
+      links.search = new URLSearchParams({ action: 'get-video-links', d: '19', link, login: tu, location: '1', ...extra }).toString();
+      const [c, l] = await Promise.all([
+        fetch(check, { referrerPolicy: 'no-referrer' }).then((r) => r.json()).catch((e) => ({ error: String(e) })),
+        fetch(links, { referrerPolicy: 'no-referrer' }).then((r) => r.json()).catch((e) => ({ error: String(e) })),
+      ]);
+      results[name] = {
+        checkUser: { result: c.result ?? null, hasUid: Number(c.UID) > 0, expirationType: typeof c.expiration, error: c.error ?? null },
+        videoLinks: { result: l.result ?? null, message: l.errormessage || null, qualities: l.URL ? Object.values(l.URL).flatMap((x) => Object.keys(x as object)) : [] },
+      };
+    }
+    report.streamujPasswordVariants = results;
+    const ok = Object.entries(results).filter(([, r]) => {
+      const x = r as { checkUser: { result: number }; videoLinks: { message: string | null } };
+      return Number(x.checkUser.result) >= 1 && !x.videoLinks.message;
+    });
+    s(ok.length ? 'ok' : 'fail', ok.length ? `funguje: ${ok.map(([k]) => k).join(', ')}` : 'žádná varianta neprošla (zkontroluj jméno a heslo na streamuj.tv)');
+  } catch (e) {
+    report.streamujPasswordVariants = errMsg(e);
     s('fail', errMsg(e));
   }
 

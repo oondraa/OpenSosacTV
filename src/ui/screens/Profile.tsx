@@ -154,7 +154,7 @@ function Settings() {
 
   const langIdx = Math.max(0, LANGUAGE_PRESETS.findIndex((p) => p.value.join() === preferences.stream.languages.join()));
   const vip = session.streamujAccount?.vipUntil ? new Date(session.streamujAccount.vipUntil) : undefined;
-  const vipActive = vip && vip > new Date();
+  const vipActive = vip ? vip > new Date() : !!session.streamujAccount?.vip;
 
   return (
     <div className="center">
@@ -164,7 +164,7 @@ function Settings() {
           <h1 className="display display--md">{session.sosac?.username}</h1>
           <div className="meta">
             <span className="tag" style={vipActive ? { background: 'rgba(48,209,88,0.18)' } : undefined}>
-              {!hasStreamuj ? 'Streamuj nepřipojen, přehraje se jen ukázka' : vipActive ? `VIP do ${vip!.toLocaleDateString('cs')}` : 'Bez VIP, přehraje se jen ukázka'}
+              {!hasStreamuj ? 'Streamuj nepřipojen, přehraje se jen ukázka' : vipActive ? (vip ? `VIP do ${vip.toLocaleDateString('cs')}` : 'VIP aktivní') : 'Bez VIP, přehraje se jen ukázka'}
             </span>
             {hasStreamuj && <span>Streamuj: {session.streamuj?.username}</span>}
           </div>

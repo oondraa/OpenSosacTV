@@ -99,7 +99,7 @@ function ServicesState({ children }: { children: ReactNode }) {
         const next: Session = {
           ...prev,
           streamuj: credentials,
-          streamujAccount: { userId: account.userId, vipUntil: account.vipUntil?.toISOString() },
+          streamujAccount: { userId: account.userId, vip: account.vip, vipUntil: account.vipUntil?.toISOString() },
         };
         saveSession(next);
         return next;

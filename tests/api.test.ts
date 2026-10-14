@@ -9,7 +9,7 @@ import {
   parseLanguage,
   secureUrl,
 } from '../src/api/normalize';
-import { parseStreamOptions, pickVariant } from '../src/api/streamuj';
+import { parseExpiration, parseStreamOptions, pickVariant } from '../src/api/streamuj';
 import type { StreamVariant } from '../src/api/streamuj';
 import { srtToVtt, decodeSubtitles } from '../src/api/subtitles';
 import { parseSettings } from '../src/api/discovery';
@@ -235,5 +235,13 @@ describe('ostatní', () => {
   });
   it('redact skryje přihlašovací údaje', () => {
     expect(redact('https://x/a?username=bob&password=abc&q=1')).toBe('https://x/a?username=***&password=***&q=1');
+  });
+  it('parseExpiration: unix čas i text', () => {
+    expect(parseExpiration(1800000000)?.getUTCFullYear()).toBe(2027);
+    expect(parseExpiration('1800000000')?.getUTCFullYear()).toBe(2027);
+    expect(parseExpiration('31.12.2026 12:00')?.getMonth()).toBe(11);
+    expect(parseExpiration('2026-12-31')?.getFullYear()).toBe(2026);
+    expect(parseExpiration(0)).toBeUndefined();
+    expect(parseExpiration('')).toBeUndefined();
   });
 });
