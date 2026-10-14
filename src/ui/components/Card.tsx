@@ -29,7 +29,7 @@ export interface CardProps {
   onFocus?: (item: MediaItem) => void;
   focusKey?: string;
   queued?: boolean;
-  /** Popisek pod kartou při fokusu (Apple TV). V mřížce ano, v řadách na home ne. */
+  /** Popisek pod kartou při fokusu. V mřížce ano, v řadách na home ne. */
   showBelow?: boolean;
   scroll?: 'row' | 'nearest';
   /** Na stránce seriálu: místo názvu seriálu ukázat název epizody. */

@@ -19,8 +19,8 @@ import { Logo } from '../components/Logo';
 import { InfoIcon, PlayIcon } from '@phosphor-icons/react';
 
 /**
- * Home: nahoře billboard s detailem právě vybraného titulu (Netflix TV),
- * pozadí se prolne na jeho fanart (Apple TV). Řady pod ním jezdí tak,
+ * Home: nahoře billboard s detailem právě vybraného titulu,
+ * pozadí se prolne na jeho fanart. Řady pod ním jezdí tak,
  * aby aktivní řada byla vždy hned pod billboardem.
  */
 export function Home() {

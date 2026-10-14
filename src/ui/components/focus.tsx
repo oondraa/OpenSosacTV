@@ -9,7 +9,7 @@ export type ScrollMode = 'row' | 'nearest' | 'center' | 'none';
 /**
  * Posune prvek do viditelné oblasti. Fokus přes ovladač nescrolluje sám
  * (preventScroll), takže pohyb je vždy plynulý a předvídatelný:
- *  - row: karta se zarovná na levý okraj řady (Netflix),
+ *  - row: karta se zarovná na levý okraj řady,
  *  - nearest: jen pokud je mimo obraz,
  *  - center: vertikálně na střed (seznamy v panelech).
  */

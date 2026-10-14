@@ -13,7 +13,7 @@ const TABS: Array<{ route: Route; label: string }> = [
 ];
 
 /**
- * Plovoucí skleněný ostrov nahoře (tvOS). Když je fokus hluboko v obsahu,
+ * Plovoucí skleněný ostrov nahoře. Když je fokus hluboko v obsahu,
  * schová se a vrátí se, jakmile se fokus přesune nahoru.
  */
 export function NavBar({ route, tucked }: { route: Route; tucked: boolean }) {
