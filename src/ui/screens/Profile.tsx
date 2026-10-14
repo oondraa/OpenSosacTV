@@ -3,7 +3,7 @@ import { ArrowRightIcon, CaretRightIcon, SignOutIcon } from '@phosphor-icons/rea
 import { setFocus } from '@noriginmedia/norigin-spatial-navigation';
 import { useServices } from '../../app';
 import { LoginError, STREAM_QUALITIES } from '../../api';
-import type { StreamQuality, WriteMode } from '../../api';
+import type { StreamQuality } from '../../api';
 import { useStage } from '../components/Backdrop';
 import { Button } from '../components/Buttons';
 import { FocusGroup, Pressable } from '../components/focus';
@@ -29,31 +29,34 @@ function Login() {
   const [separate, setSeparate] = useState(false);
   const [error, setError] = useState<{ field?: string; message: string }>();
   const [busy, setBusy] = useState(false);
+  /** Sosáč prošel, Streamuj ne: nabídnout přihlášení jen k Sosáči. */
+  const [sosacOk, setSosacOk] = useState(false);
   useInitialFocus(['login-su']);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  async function submit() {
+  async function submit(requireStreamuj = true) {
     if (busy) return;
     const tu = separate ? form.tu : form.su;
     const tp = separate ? form.tp : form.sp;
-    if (!form.su || !form.sp || !tu || !tp) {
+    if (!form.su || !form.sp || (requireStreamuj && (!tu || !tp))) {
       setError({ message: 'Vyplň jméno a heslo.' });
       return;
     }
     setBusy(true);
     setError(undefined);
     try {
-      await login({ sosacUsername: form.su, sosacPassword: form.sp, streamujUsername: tu, streamujPassword: tp });
+      await login({ sosacUsername: form.su, sosacPassword: form.sp, streamujUsername: tu, streamujPassword: tp }, { requireStreamuj });
       storage.set(ONBOARDED_KEY, true);
       navigate({ name: 'home' }, { replace: true });
     } catch (e) {
       const field = e instanceof LoginError ? e.field : undefined;
       let message = (e as Error).message;
       // Sosáč prošel, Streamuj ne: nejspíš jiné údaje na Streamuj.
-      if (field === 'streamuj' && !separate) {
-        setSeparate(true);
-        message = `${message} Na Streamuj máš asi jiné údaje, doplň je níž.`;
+      if (field === 'streamuj') {
+        setSosacOk(true);
+        if (!separate) setSeparate(true);
+        message = `Sosáč je v pořádku, ale ${message.charAt(0).toLowerCase()}${message.slice(1)} Doplň údaje ze Streamuj, nebo pokračuj jen se Sosáčem (přehraje se jen ukázka).`;
       }
       setError({ field, message });
       void setFocus(field === 'streamuj' ? 'login-tu' : 'login-su');
@@ -103,6 +106,7 @@ function Login() {
           <p className="error" role="alert">{error?.message}</p>
           <FocusGroup className="detail__actions" focusKey="login-actions">
             <Button variant="primary" focusKey="login-submit" label={busy ? 'Ověřuji…' : 'Přihlásit'} icon={<ArrowRightIcon weight="bold" />} onPress={() => void submit()} disabled={busy} />
+            {sosacOk && <Button focusKey="login-sosac-only" label="Jen se Sosáčem" onPress={() => void submit(false)} disabled={busy} />}
             <Button
               label={separate ? 'Stejné údaje pro oba' : 'Jiný účet na Streamuj'}
               onPress={() => {
@@ -137,7 +141,6 @@ const LANGUAGE_PRESETS: Array<{ label: string; value: string[] }> = [
 ];
 
 const QUALITY_LABEL: Record<StreamQuality, string> = { UHD: '4K', FHD: 'Full HD', HD: 'HD', SD: 'SD (úspora dat)' };
-const WRITE_MODES: WriteMode[] = ['json-as-text', 'form', 'query'];
 
 function cycle<T>(list: readonly T[], current: T): T {
   const i = list.indexOf(current);
@@ -145,8 +148,9 @@ function cycle<T>(list: readonly T[], current: T): T {
 }
 
 function Settings() {
-  const { session, preferences, updatePreferences, logout, settings } = useServices();
-  useInitialFocus(['set-quality']);
+  const { session, preferences, updatePreferences, logout, settings, hasStreamuj } = useServices();
+  const [connecting, setConnecting] = useState(false);
+  useInitialFocus(['connect-open', 'set-quality']);
 
   const langIdx = Math.max(0, LANGUAGE_PRESETS.findIndex((p) => p.value.join() === preferences.stream.languages.join()));
   const vip = session.streamujAccount?.vipUntil ? new Date(session.streamujAccount.vipUntil) : undefined;
@@ -160,11 +164,13 @@ function Settings() {
           <h1 className="display display--md">{session.sosac?.username}</h1>
           <div className="meta">
             <span className="tag" style={vipActive ? { background: 'rgba(48,209,88,0.18)' } : undefined}>
-              {vipActive ? `VIP do ${vip!.toLocaleDateString('cs')}` : 'Bez VIP, přehraje se jen ukázka'}
+              {!hasStreamuj ? 'Streamuj nepřipojen, přehraje se jen ukázka' : vipActive ? `VIP do ${vip!.toLocaleDateString('cs')}` : 'Bez VIP, přehraje se jen ukázka'}
             </span>
-            <span>Streamuj: {session.streamuj?.username}</span>
+            {hasStreamuj && <span>Streamuj: {session.streamuj?.username}</span>}
           </div>
         </div>
+
+        {(connecting || !hasStreamuj) && <ConnectStreamuj open={connecting} onOpen={() => setConnecting(true)} onDone={() => setConnecting(false)} />}
 
         <div className="bezel">
           <FocusGroup className="bezel__core" focusKey="settings-list" style={{ padding: '0.75rem', display: 'grid', gap: '0.25rem' }}>
@@ -185,12 +191,12 @@ function Settings() {
               onPress={() => updatePreferences({ autoSubtitles: !preferences.autoSubtitles })}
             />
             <SettingRow label="Server Streamuj" value={`Lokace ${preferences.location}`} onPress={() => updatePreferences({ location: preferences.location === 1 ? 2 : 1 })} />
-            <SettingRow label="Ukládání pozice" value={preferences.writeMode} onPress={() => updatePreferences({ writeMode: cycle(WRITE_MODES, preferences.writeMode) })} />
             <SettingRow label="Diagnostika připojení" value="Otevřít" onPress={() => window.open(`${import.meta.env.BASE_URL}diagnostics.html`, '_blank')} />
           </FocusGroup>
         </div>
 
         <FocusGroup className="detail__actions" focusKey="settings-actions">
+          {hasStreamuj && !connecting && <Button label="Změnit účet Streamuj" onPress={() => setConnecting(true)} />}
           <Button label="Odhlásit" icon={<SignOutIcon weight="bold" />} onPress={logout} />
         </FocusGroup>
         <p className="note">
@@ -210,5 +216,56 @@ function SettingRow({ label, value, onPress, focusKey }: { label: string; value:
         <CaretRightIcon weight="bold" />
       </span>
     </Pressable>
+  );
+}
+
+/** Připojení účtu Streamuj k existující session (plné přehrávání). */
+function ConnectStreamuj({ open, onOpen, onDone }: { open: boolean; onOpen: () => void; onDone: () => void }) {
+  const { connectStreamuj } = useServices();
+  const [user, setUser] = useState('');
+  const [pass, setPass] = useState('');
+  const [error, setError] = useState<string>();
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (busy || !user || !pass) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await connectStreamuj(user, pass);
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+      void setFocus('connect-tu');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="bezel">
+      <FocusGroup className="bezel__core" focusKey="connect-streamuj" style={{ padding: '1.75rem', display: 'grid', gap: '1rem' }}>
+        <div className="group-title" style={{ margin: 0 }}>
+          Streamuj.tv <small>videa hostuje Streamuj, bez účtu tam se pustí jen ukázka</small>
+        </div>
+        {open ? (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <FocusInput focusKey="connect-tu" placeholder="Jméno na Streamuj" value={user} onChange={(e) => setUser(e.target.value)} autoComplete="off" />
+              <FocusInput focusKey="connect-tp" placeholder="Heslo" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" onSubmit={() => void submit()} />
+            </div>
+            <p className="error" role="alert" style={{ margin: 0 }}>{error}</p>
+            <div className="detail__actions" style={{ marginTop: 0 }}>
+              <Button variant="primary" label={busy ? 'Ověřuji…' : 'Připojit'} icon={<ArrowRightIcon weight="bold" />} onPress={() => void submit()} disabled={busy} />
+              <Button label="Zrušit" onPress={onDone} />
+            </div>
+          </>
+        ) : (
+          <div className="detail__actions" style={{ marginTop: 0 }}>
+            <Button variant="primary" focusKey="connect-open" label="Připojit Streamuj" icon={<ArrowRightIcon weight="bold" />} onPress={() => { onOpen(); setTimeout(() => void setFocus('connect-tu'), 50); }} />
+          </div>
+        )}
+      </FocusGroup>
+    </div>
   );
 }

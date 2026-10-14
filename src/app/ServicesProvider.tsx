@@ -11,6 +11,7 @@ import {
   loadPreferences,
   loadSession,
   login as apiLogin,
+  verifyStreamuj,
   savePreferences,
   saveSession,
 } from '../api';
@@ -23,8 +24,13 @@ interface ServicesValue {
   session: Session;
   preferences: ClientPreferences;
   clients: Clients;
+  /** Přihlášen k Sosáči (katalog, fronta, rozkoukané). */
   isLoggedIn: boolean;
-  login(input: LoginInput): Promise<StreamujAccount>;
+  /** Připojený účet Streamuj (plné přehrávání). */
+  hasStreamuj: boolean;
+  login(input: LoginInput, opts?: { requireStreamuj?: boolean }): Promise<StreamujAccount | null>;
+  /** Připojí nebo změní účet Streamuj u existující session. */
+  connectStreamuj(username: string, password: string): Promise<StreamujAccount>;
   logout(): void;
   updatePreferences(patch: Partial<ClientPreferences>): void;
 }
@@ -75,8 +81,8 @@ function ServicesState({ children }: { children: ReactNode }) {
   const clients = useMemo(() => createClients(settings, session, preferences), [settings, session, preferences]);
 
   const login = useCallback(
-    async (input: LoginInput) => {
-      const result = await apiLogin(input, settings, preferences);
+    async (input: LoginInput, opts?: { requireStreamuj?: boolean }) => {
+      const result = await apiLogin(input, settings, preferences, opts);
       saveSession(result.session);
       setSession(result.session);
       // Data se liší podle uživatele (pozice, fronta), proto vše znovu.
@@ -84,6 +90,23 @@ function ServicesState({ children }: { children: ReactNode }) {
       return result.streamujAccount;
     },
     [settings, preferences, queryClient],
+  );
+
+  const connectStreamuj = useCallback(
+    async (username: string, password: string) => {
+      const { credentials, account } = await verifyStreamuj(username, password, settings, preferences);
+      setSession((prev) => {
+        const next: Session = {
+          ...prev,
+          streamuj: credentials,
+          streamujAccount: { userId: account.userId, vipUntil: account.vipUntil?.toISOString() },
+        };
+        saveSession(next);
+        return next;
+      });
+      return account;
+    },
+    [settings, preferences],
   );
 
   const logout = useCallback(() => {
@@ -107,12 +130,14 @@ function ServicesState({ children }: { children: ReactNode }) {
       session,
       preferences,
       clients,
-      isLoggedIn: session.sosac !== null && session.streamuj !== null,
+      isLoggedIn: session.sosac !== null,
+      hasStreamuj: session.streamuj !== null,
       login,
+      connectStreamuj,
       logout,
       updatePreferences,
     }),
-    [ready, settings, session, preferences, clients, login, logout, updatePreferences],
+    [ready, settings, session, preferences, clients, login, connectStreamuj, logout, updatePreferences],
   );
 
   return <ServicesContext.Provider value={value}>{children}</ServicesContext.Provider>;

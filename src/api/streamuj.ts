@@ -99,7 +99,12 @@ export class StreamujClient {
       }),
       { signal },
     );
-    return parseStreamOptions(raw);
+    const options = parseStreamOptions(raw);
+    // Anonymně Streamuj žádnou hlášku nepošle, ale stejně pustí jen ukázku.
+    if (!this.credentials && options.variants.length && !options.warning) {
+      options.warning = 'Bez účtu Streamuj.tv se přehraje jen ukázka. Připoj účet v profilu.';
+    }
+    return options;
   }
 
   /**

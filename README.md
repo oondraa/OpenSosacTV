@@ -65,12 +65,18 @@ const player = useVideoPlayer(videoRef, source.data, { serialDetail, onPlayNext 
 
 ## Ověřený stav (14. 10. 2026)
 
-- Katalog i Streamuj API fungují z prohlížeče přes CORS.
+- Katalog i Streamuj API fungují z prohlížeče přes CORS, i z GitHub Pages.
 - Finální stream je HTTPS progresivní MP4 s range requesty. Stačí nativní `<video>`, seek i přepnutí
   kvality se zachováním pozice fungují.
-- Bez VIP Streamuj vrátí odkaz jen na ukázku videa (~25 MB) a hlášku, kterou UI zobrazuje.
-- **Neověřeno bez účtu:** jestli server přijme zápis pozice a fronty bez CORS preflightu.
-  To otestuje `diagnostics.html`.
+- S reálným účtem (diagnostics.html): přihlášení k Sosáči, ukládání pozice (`text/plain` JSON tělo),
+  fronta a titulky (SRT v UTF-8) fungují. Form a query varianta zápisu vrací 422.
+- Bez účtu Streamuj nebo bez VIP se přehraje jen ukázka (~25 MB), UI na to upozorní.
+
+## Přihlášení
+
+Sosáč (katalog, fronta, rozkoukané) a Streamuj.tv (hosting videí, VIP) jsou dvě služby. Aplikace zkusí
+stejné jméno a heslo na obou. Když Streamuj neprojde, jde pokračovat jen se Sosáčem a Streamuj připojit
+později v profilu.
 
 ## Licence
 

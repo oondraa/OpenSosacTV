@@ -29,6 +29,7 @@ export type { PlaybackSource } from './playback';
 export { ProgressReporter } from './progress';
 export {
   login,
+  verifyStreamuj,
   LoginError,
   createClients,
   loadSession,
