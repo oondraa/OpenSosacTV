@@ -17,7 +17,7 @@ export default defineConfig({
       manifest: {
         name: 'OpenSosacTV',
         short_name: 'OpenSosacTV',
-        description: 'Neoficiální klient pro Sosáč a Streamuj.tv ve stylu Apple TV a Netflixu',
+        description: 'Neoficiální klient pro Sosáč a Streamuj.tv',
         lang: 'cs',
         // Telefon je hlavní zařízení: standalone (se stavovým řádkem), libovolná orientace.
         display: 'standalone',

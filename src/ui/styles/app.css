@@ -1,7 +1,5 @@
 /* =====================================================================
-   Sosáč TV — vizuální systém
-   Kombinace Apple TV (fokus jako fyzický zdvih, sklo, ticho) a Netflixu
-   (billboard s detailem vybraného titulu, vodorovné řady).
+   OpenSosacTV — vizuální systém
    Navrženo pro 1920×1080 ze 3 m. Vše v rem, html font-size se škáluje
    podle šířky viewportu, takže TV, iPad i desktop drží proporce.
    ===================================================================== */
@@ -402,7 +400,7 @@ img { display: block; }
   transition: opacity var(--t-med) var(--spring);
 }
 .card__frame img.is-loaded { opacity: 1; }
-/* Lesk jako na Apple TV: světlo se při fokusu přelije přes kartu. */
+/* Lesk: světlo se při fokusu přelije přes kartu. */
 .card__frame::after {
   content: '';
   position: absolute;
