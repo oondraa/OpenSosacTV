@@ -16,7 +16,7 @@ export interface Session {
   sosac: SosacCredentials | null;
   streamuj: StreamujCredentials | null;
   /** Výsledek posledního check-user, jen pro zobrazení. */
-  streamujAccount?: { userId: number; vipUntil?: string };
+  streamujAccount?: { userId: number; vip?: boolean; vipUntil?: string };
 }
 
 export interface ClientPreferences {
@@ -167,7 +167,7 @@ export async function login(
     session: {
       sosac,
       streamuj: credentials,
-      streamujAccount: { userId: account.userId, vipUntil: account.vipUntil?.toISOString() },
+      streamujAccount: { userId: account.userId, vip: account.vip, vipUntil: account.vipUntil?.toISOString() },
     },
     streamujAccount: account,
   };

@@ -15,9 +15,30 @@ export type StreamLocation = 1 | 2;
 export interface StreamujAccount {
   valid: boolean;
   userId: number;
-  /** Konec VIP, undefined = bez VIP. */
+  /** Aktivní VIP (plné přehrávání). */
+  vip: boolean;
+  /** Konec VIP, pokud ho API poslalo v čitelném tvaru. */
   vipUntil?: Date;
+  /** Surový `result` z API: 0 špatné údaje, 1 bez VIP, 2 VIP. */
+  resultCode: number;
   message?: string;
+}
+
+/** `expiration` bývá unix čas, nebo text s datem ("2026-12-31", "31.12.2026 12:00"). */
+export function parseExpiration(v: unknown): Date | undefined {
+  if (typeof v === 'number' || (typeof v === 'string' && /^\d+$/.test(v))) {
+    const n = Number(v);
+    if (n <= 0) return undefined;
+    return new Date(n < 1e12 ? n * 1000 : n);
+  }
+  if (typeof v !== 'string' || !v.trim()) return undefined;
+  const cz = /^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(v.trim());
+  if (cz) {
+    const [, d, m, y, hh = '0', mm = '0'] = cz;
+    return new Date(Number(y), Number(m) - 1, Number(d), Number(hh), Number(mm));
+  }
+  const t = Date.parse(v.replace(' ', 'T'));
+  return Number.isFinite(t) ? new Date(t) : undefined;
 }
 
 export interface StreamVariant {
@@ -67,7 +88,7 @@ export class StreamujClient {
   }
 
   async checkUser(signal?: AbortSignal): Promise<StreamujAccount> {
-    if (!this.credentials) return { valid: false, userId: 0, message: 'Chybí účet Streamuj' };
+    if (!this.credentials) return { valid: false, userId: 0, vip: false, resultCode: 0, message: 'Chybí účet Streamuj' };
     const raw = await requestJson<RawStreamujCheckUser>(
       this.apiUrl({
         action: 'check-user',
@@ -77,11 +98,14 @@ export class StreamujClient {
       }),
       { signal },
     );
-    const vipUntil = raw.expiration > 0 ? new Date(raw.expiration * 1000) : undefined;
+    // result: 0 = špatné údaje, 1 = účet bez VIP, 2 = účet s VIP (podle Kodi pluginu).
+    const result = Number(raw.result);
     return {
-      valid: raw.result === 1 && raw.UID > 0,
-      userId: raw.UID,
-      vipUntil,
+      valid: result === 1 || result === 2,
+      userId: Number(raw.UID) || 0,
+      vip: result === 2,
+      vipUntil: result === 2 ? parseExpiration(raw.expiration) : undefined,
+      resultCode: result,
       message: typeof raw.errormessage === 'string' && raw.errormessage ? raw.errormessage : undefined,
     };
   }
