@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { FocusContext, useFocusable } from '@noriginmedia/norigin-spatial-navigation';
 import type { FocusableComponentLayout, FocusDetails } from '@noriginmedia/norigin-spatial-navigation';
+import { isPointerMode } from '../input';
 
 export type ScrollMode = 'row' | 'nearest' | 'center' | 'none';
 
@@ -14,8 +15,8 @@ export type ScrollMode = 'row' | 'nearest' | 'center' | 'none';
  */
 export function scrollToFocus(el: Element | null | undefined, mode: ScrollMode, details?: FocusDetails) {
   if (!el || mode === 'none') return;
-  // Myš: obsah pod kurzorem neposouvat, uživatel scrolluje sám.
-  if ((details as { event?: Event } | undefined)?.event?.type === 'mouseenter') return;
+  // Myš a dotyk: obsah pod kurzorem neposouvat, uživatel scrolluje sám (viz input.ts).
+  if (isPointerMode() || (details as { event?: Event } | undefined)?.event?.type === 'mouseenter') return;
   const behavior: ScrollBehavior = 'smooth';
   if (mode === 'row') {
     // Jen vodorovně v rámci řady. Svislou polohu řídí rodič (řada se zarovná
@@ -144,7 +145,8 @@ export function FocusGroup({ focusKey, className, style, remember = true, trap, 
   });
 
   useEffect(() => {
-    if (hasFocusedChild && ref.current) onFocusIn?.(ref.current);
+    // Rodiče tu posouvají obsah (řada pod billboard), to chceme jen u ovladače.
+    if (hasFocusedChild && ref.current && !isPointerMode()) onFocusIn?.(ref.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasFocusedChild]);
 

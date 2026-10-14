@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowCounterClockwiseIcon, CheckIcon, PlayIcon, PlusIcon } from '@phosphor-icons/react';
+import { ArrowCounterClockwiseIcon, CaretLeftIcon, CheckIcon, PlayIcon, PlusIcon } from '@phosphor-icons/react';
 import { useMovie, useQueueIds, useSerial, useServices, useToggleQueue } from '../../app';
 import { formatEpisodeCode } from '../../api';
 import type { Episode, MediaItem, Movie, Serial } from '../../api';
 import { useStage } from '../components/Backdrop';
 import { Button, Chip } from '../components/Buttons';
-import { Card } from '../components/Card';
+import { Card, FadeImg } from '../components/Card';
 import { FocusGroup } from '../components/focus';
 import { LanguageTags, MetaLine } from '../components/Meta';
 import { useChrome, useInitialFocus } from '../chrome';
 import { formatDuration, remainingLabel } from '../format';
 import { play, playFromStart, recallItem } from '../itemStore';
+import { goBack } from '../router';
+import { useIsPhone } from '../useIsPhone';
 
 function useDetailChrome() {
   const { setTucked } = useChrome();
@@ -56,12 +58,65 @@ function Credits({ item }: { item: Movie | Serial }) {
   );
 }
 
+/** Telefon: obrázek je součástí stránky (scrolluje s ní) a vlevo nahoře je Zpět. */
+function PhoneMedia({ src }: { src?: string }) {
+  return (
+    <>
+      <button type="button" className="mback" aria-label="Zpět" onClick={goBack}>
+        <CaretLeftIcon weight="bold" />
+      </button>
+      <div className="phero__media detail__media">
+        <FadeImg src={src} />
+        <div className="phero__shade" />
+      </div>
+    </>
+  );
+}
+
+/** Telefon: epizody jako svislý seznam (náhled vlevo, název a délka vpravo). */
+function EpisodeList({ episodes, onPlay }: { episodes: Episode[]; onPlay: (ep: Episode) => void }) {
+  return (
+    <ol className="eplist">
+      {episodes.map((ep) => {
+        const progress = ep.watch.finished ? 1 : ep.watch.progress;
+        return (
+          <li key={ep.id}>
+            <button type="button" className="eplist__item" onClick={() => onPlay(ep)}>
+              <span className="eplist__thumb">
+                <FadeImg src={ep.thumbnail} />
+                <span className="eplist__play">
+                  <PlayIcon weight="fill" />
+                </span>
+                {progress > 0.01 && (
+                  <span className="card__progress">
+                    <i style={{ width: `${progress * 100}%` }} />
+                  </span>
+                )}
+              </span>
+              <span className="eplist__text">
+                <b>
+                  {ep.episode}. {ep.episodeTitle}
+                </b>
+                <span>
+                  {formatDuration(ep.duration) ?? ''}
+                  {ep.watch.finished ? ' · zhlédnuto' : ''}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 /* ============================ Film ============================ */
 
 export function MovieDetail({ id }: { id: number }) {
   const initial = recallItem('movie', id);
   const { data: movie, error } = useMovie(id, initial);
-  useStage(movie?.backdrop ?? movie?.poster, 'full');
+  const phone = useIsPhone();
+  useStage(phone ? undefined : movie?.backdrop ?? movie?.poster, 'full');
   useDetailChrome();
   useInitialFocus(['detail-play'], [id, !!movie]);
 
@@ -70,6 +125,7 @@ export function MovieDetail({ id }: { id: number }) {
   const resume = movie.watch.position && !movie.watch.finished && movie.watch.position > 10;
   return (
     <div className="screen no-scrollbar detail">
+      {phone && <PhoneMedia src={movie.backdrop ?? movie.poster} />}
       <FocusGroup className="detail__head" focusKey="detail-head">
         <span className="eyebrow">Film</span>
         <h1 className="display">{movie.title}</h1>
@@ -102,7 +158,8 @@ export function SerialDetail({ id }: { id: number }) {
   const s = useSerial(id, initial);
   const serial = s.serial;
   const [season, setSeason] = useState<number>();
-  useStage(serial?.backdrop ?? serial?.poster, 'full');
+  const phone = useIsPhone();
+  useStage(phone ? undefined : serial?.backdrop ?? serial?.poster, 'full');
   useDetailChrome();
   useInitialFocus(['detail-play'], [id, !!s.continueEpisode]);
 
@@ -117,6 +174,7 @@ export function SerialDetail({ id }: { id: number }) {
 
   return (
     <div className="screen no-scrollbar detail">
+      {phone && <PhoneMedia src={serial.backdrop ?? serial.poster} />}
       <FocusGroup className="detail__head" focusKey="detail-head">
         <span className="eyebrow">Seriál</span>
         <h1 className="display">{serial.title}</h1>
@@ -155,13 +213,17 @@ export function SerialDetail({ id }: { id: number }) {
         </FocusGroup>
       )}
 
+      {phone ? (
+        <EpisodeList episodes={episodes} onPlay={playEpisode} />
+      ) : (
       <FocusGroup className="row" focusKey={`episodes-${activeSeason}`} onFocusIn={(el) => el.scrollIntoView({ behavior: 'smooth', block: 'end' })}>
-        <div className="row__track no-scrollbar">
-          {episodes.map((ep) => (
-            <Card key={ep.id} item={ep} layout="wide" inSerial onPress={playEpisode} />
-          ))}
-        </div>
-      </FocusGroup>
+          <div className="row__track no-scrollbar">
+            {episodes.map((ep) => (
+              <Card key={ep.id} item={ep} layout="wide" inSerial onPress={playEpisode} />
+            ))}
+          </div>
+        </FocusGroup>
+      )}
     </div>
   );
 }

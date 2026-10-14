@@ -8,7 +8,14 @@ import { useStage } from '../components/Backdrop';
 import { LanguageTags, MetaLine } from '../components/Meta';
 import { Row } from '../components/Row';
 import { useChrome } from '../chrome';
+import { isPointerMode } from '../input';
 import { openDetail, play } from '../itemStore';
+import { useIsPhone } from '../useIsPhone';
+import { navigate } from '../router';
+import { useServices } from '../../app';
+import { Button } from '../components/Buttons';
+import { FadeImg } from '../components/Card';
+import { InfoIcon, PlayIcon } from '@phosphor-icons/react';
 
 /**
  * Home: nahoře billboard s detailem právě vybraného titulu (Netflix TV),
@@ -23,7 +30,9 @@ export function Home() {
   const queuedMovies = useQueueIds('movie').data;
   const queuedSerials = useQueueIds('serial').data;
 
-  useStage(hero?.backdrop ?? (hero?.kind === 'episode' ? hero.thumbnail : undefined) ?? hero?.poster, 'hero');
+  const phone = useIsPhone();
+  // Telefon: obrázek je součástí stránky a scrolluje s ní, pevné pozadí ne.
+  useStage(phone ? undefined : hero?.backdrop ?? (hero?.kind === 'episode' ? hero.thumbnail : undefined) ?? hero?.poster, 'hero');
 
   // Úvodní fokus: první řada, která má data. Řady bez dat (např. prázdné
   // "Pokračovat") se přeskočí.
@@ -40,7 +49,7 @@ export function Home() {
         if (st === undefined) return; // čekáme na řadu s vyšší prioritou
         if (st === 'ready') {
           const key = `row-${rows[i]!.id}`;
-          if (doesFocusableExist(key) && !getCurrentFocusKey()?.startsWith('nav')) {
+          if (!isPointerMode() && doesFocusableExist(key) && !getCurrentFocusKey()?.startsWith('nav')) {
             focused.current = true;
             void setFocus(key);
           }
@@ -66,7 +75,11 @@ export function Home() {
 
   return (
     <div className="home">
-      <header className="hero">{hero && <HeroInfo key={`${hero.kind}-${hero.id}`} item={hero} />}</header>
+      {phone ? (
+        <PhoneHero item={hero} />
+      ) : (
+        <header className="hero">{hero && <HeroInfo key={`${hero.kind}-${hero.id}`} item={hero} />}</header>
+      )}
       <div className="home__rows no-scrollbar" ref={rowsRef}>
         {rows.map((r, i) => (
           <HomeRow
@@ -74,7 +87,7 @@ export function Home() {
             def={r}
             index={i}
             onStatus={onRowStatus}
-            onFocusItem={setHero}
+            onFocusItem={phone ? undefined : setHero}
             onRowFocus={onRowFocus}
             queuedIds={r.source === 'serial' ? queuedSerials : queuedMovies}
           />
@@ -112,7 +125,7 @@ function HomeRow({
   def: HomeRowDef;
   index: number;
   onStatus: (index: number, s: 'ready' | 'empty', first?: MediaItem) => void;
-  onFocusItem: (item: MediaItem) => void;
+  onFocusItem?: (item: MediaItem) => void;
   onRowFocus: (el: HTMLElement, index: number) => void;
   queuedIds?: Set<number>;
 }) {
@@ -142,5 +155,38 @@ function HomeRow({
       onRowFocus={(el) => onRowFocus(el, index)}
       queuedIds={queuedIds}
     />
+  );
+}
+
+/** Telefon: hlavička s profilem a velký náhled doporučeného titulu. */
+function PhoneHero({ item }: { item?: MediaItem }) {
+  const { session } = useServices();
+  const initial = session.sosac?.username?.[0]?.toUpperCase() ?? '?';
+  const img = item ? item.backdrop ?? (item.kind === 'episode' ? item.thumbnail : undefined) ?? item.poster : undefined;
+  const isEp = item?.kind === 'episode';
+  return (
+    <header className="phero">
+      <div className="mtop">
+        <span className="mtop__brand">Sosáč</span>
+        <button type="button" className="nav__avatar" aria-label="Profil" onClick={() => navigate({ name: 'profile' })}>
+          {initial}
+        </button>
+      </div>
+      <div className="phero__media">
+        <FadeImg src={img} />
+        <div className="phero__shade" />
+      </div>
+      {item && (
+        <div className="phero__body" key={`${item.kind}-${item.id}`}>
+          {isEp && <span className="eyebrow">{formatEpisodeCode(item.season, item.episode)} · {item.episodeTitle}</span>}
+          <h1 className="display">{isEp ? item.serialTitle ?? item.title : item.title}</h1>
+          <MetaLine item={item} showKind={!isEp} />
+          <div className="phero__actions">
+            <Button variant="primary" label="Přehrát" icon={<PlayIcon weight="fill" />} onPress={() => play(item)} />
+            <Button label="Detail" icon={<InfoIcon weight="bold" />} onPress={() => openDetail(item)} />
+          </div>
+        </div>
+      )}
+    </header>
   );
 }
