@@ -93,7 +93,8 @@ export interface LoginInput {
 
 export interface LoginResult {
   session: Session;
-  streamujAccount: StreamujAccount;
+  /** null = přihlášeno jen k Sosáči, Streamuj chybí nebo neprošel. */
+  streamujAccount: StreamujAccount | null;
 }
 
 export class LoginError extends Error {
@@ -105,24 +106,48 @@ export class LoginError extends Error {
   }
 }
 
+/** Ověří účet Streamuj. Vrací přihlašovací údaje a stav účtu, při neplatném účtu hází. */
+export async function verifyStreamuj(
+  username: string,
+  password: string,
+  settings: ServiceSettings,
+  prefs: ClientPreferences,
+): Promise<{ credentials: StreamujCredentials; account: StreamujAccount }> {
+  const credentials: StreamujCredentials = { username: username.trim(), passwordHash: streamujPasswordHash(password) };
+  const client = createClients(settings, { sosac: null, streamuj: credentials }, prefs).streamuj;
+  let account: StreamujAccount;
+  try {
+    account = await client.checkUser();
+  } catch (err) {
+    throw new LoginError('streamuj', `Streamuj: ${(err as Error).message}`);
+  }
+  if (!account.valid) throw new LoginError('streamuj', 'Streamuj.tv tohle jméno a heslo nezná.');
+  return { credentials, account };
+}
+
 /**
- * Ověří oba účty a vrátí session k uložení. Nic neukládá sama, to dělá volající
+ * Ověří účty a vrátí session k uložení. Nic neukládá sama, to dělá volající
  * (React vrstva) až po úspěchu.
+ *
+ * Sosáč je povinný. Streamuj je povinný jen s `requireStreamuj` (výchozí):
+ * bez něj se přehrává jen ukázka, ale katalog, fronta a rozkoukané fungují.
  */
-export async function login(input: LoginInput, settings: ServiceSettings, prefs: ClientPreferences): Promise<LoginResult> {
+export async function login(
+  input: LoginInput,
+  settings: ServiceSettings,
+  prefs: ClientPreferences,
+  opts: { requireStreamuj?: boolean } = {},
+): Promise<LoginResult> {
+  const requireStreamuj = opts.requireStreamuj ?? true;
   const sosac: SosacCredentials = {
     username: input.sosacUsername.trim(),
     passwordHash: sosacPasswordHash(input.sosacUsername.trim(), input.sosacPassword),
   };
-  const streamuj: StreamujCredentials = {
-    username: input.streamujUsername.trim(),
-    passwordHash: streamujPasswordHash(input.streamujPassword),
-  };
-  const clients = createClients(settings, { sosac, streamuj }, prefs);
+  const sosacClient = createClients(settings, { sosac, streamuj: null }, prefs).sosac;
 
   const [sosacResult, streamujResult] = await Promise.allSettled([
-    clients.sosac.verifyCredentials(),
-    clients.streamuj.checkUser(),
+    sosacClient.verifyCredentials(),
+    input.streamujUsername ? verifyStreamuj(input.streamujUsername, input.streamujPassword, settings, prefs) : Promise.reject(new LoginError('streamuj', 'Chybí účet Streamuj.')),
   ]);
 
   if (sosacResult.status === 'rejected') {
@@ -133,17 +158,15 @@ export async function login(input: LoginInput, settings: ServiceSettings, prefs:
     );
   }
   if (streamujResult.status === 'rejected') {
-    throw new LoginError('streamuj', `Streamuj: ${(streamujResult.reason as Error).message}`);
-  }
-  const account = streamujResult.value;
-  if (!account.valid) {
-    throw new LoginError('streamuj', account.message ?? 'Špatné jméno nebo heslo ke Streamuj.tv');
+    if (requireStreamuj) throw streamujResult.reason;
+    return { session: { sosac, streamuj: null }, streamujAccount: null };
   }
 
+  const { credentials, account } = streamujResult.value;
   return {
     session: {
       sosac,
-      streamuj,
+      streamuj: credentials,
       streamujAccount: { userId: account.userId, vipUntil: account.vipUntil?.toISOString() },
     },
     streamujAccount: account,
