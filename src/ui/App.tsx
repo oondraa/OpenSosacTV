@@ -8,6 +8,7 @@ import { TabBar } from './components/TabBar';
 import { useIsPhone } from './useIsPhone';
 import { ChromeContext } from './chrome';
 import { initInputModeTracking } from './input';
+import { hideSplash } from './splash';
 import { goBack, navigate, useRoute } from './router';
 import { Browse } from './screens/Browse';
 import { MovieDetail, SerialDetail } from './screens/Detail';
@@ -67,6 +68,10 @@ function Shell() {
       return true;
     }
   }, route.name !== 'play');
+
+  useEffect(() => {
+    if (ready) hideSplash();
+  }, [ready]);
 
   if (!ready) return null;
 

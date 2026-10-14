@@ -1,4 +1,8 @@
-# Sosáč TV (neoficiální klient)
+<p align="center"><img src="public/icon.svg" width="96" alt="OpenSosacTV"></p>
+
+# OpenSosacTV
+
+**Aplikace:** https://oondraa.github.io/OpenSosacTV/ (na telefonu: Sdílet → Přidat na plochu)
 
 PWA klient pro [Sosáč](https://tv.sosac.tv) a [Streamuj.tv](https://www.streamuj.tv) ve stylu Apple TV.
 Nehostuje žádný obsah ani backend: běží celý v prohlížeči a volá stejné API jako

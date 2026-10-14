@@ -3,6 +3,7 @@ import { useServices } from '../../app';
 import { navigate } from '../router';
 import type { Route } from '../router';
 import { FocusGroup, Pressable } from './focus';
+import { Logo } from './Logo';
 
 const TABS: Array<{ route: Route; label: string }> = [
   { route: { name: 'home' }, label: 'Domů' },
@@ -21,6 +22,10 @@ export function NavBar({ route, tucked }: { route: Route; tucked: boolean }) {
   const go = (r: Route) => navigate(r, { replace: true });
 
   return (
+    <>
+    <a className={`brand ${tucked ? 'is-tucked' : ''}`} href="#/" aria-label="OpenSosacTV, domů">
+      <Logo size={34} />
+    </a>
     <FocusGroup as="nav" focusKey="nav" className={`nav ${tucked ? 'is-tucked' : ''}`} preferredChild={`nav-${route.name}`}>
       <Pressable
         className={`nav__item nav__item--icon ${route.name === 'search' ? 'is-active' : ''}`}
@@ -52,5 +57,6 @@ export function NavBar({ route, tucked }: { route: Route; tucked: boolean }) {
         <span className="nav__avatar">{initial}</span>
       </Pressable>
     </FocusGroup>
+    </>
   );
 }
