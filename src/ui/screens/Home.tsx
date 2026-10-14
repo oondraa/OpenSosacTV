@@ -15,6 +15,7 @@ import { navigate } from '../router';
 import { useServices } from '../../app';
 import { Button } from '../components/Buttons';
 import { FadeImg } from '../components/Card';
+import { Logo } from '../components/Logo';
 import { InfoIcon, PlayIcon } from '@phosphor-icons/react';
 
 /**
@@ -167,7 +168,7 @@ function PhoneHero({ item }: { item?: MediaItem }) {
   return (
     <header className="phero">
       <div className="mtop">
-        <span className="mtop__brand">Sosáč</span>
+        <Logo size={28} className="mtop__brand" />
         <button type="button" className="nav__avatar" aria-label="Profil" onClick={() => navigate({ name: 'profile' })}>
           {initial}
         </button>

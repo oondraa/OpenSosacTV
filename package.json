@@ -1,8 +1,8 @@
 {
-  "name": "sosac-tv-client",
+  "name": "opensosactv",
   "private": true,
   "version": "0.1.0",
-  "description": "Neoficiální PWA klient pro Sosáč / Streamuj.tv ve stylu Apple TV",
+  "description": "OpenSosacTV: neoficiální PWA klient pro Sosáč / Streamuj.tv ve stylu Apple TV a Netflixu",
   "license": "GPL-2.0-only",
   "type": "module",
   "scripts": {

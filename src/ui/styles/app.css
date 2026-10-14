@@ -190,6 +190,46 @@ img { display: block; }
 }
 .nav__item--icon { padding: 0 0.75rem; }
 
+/* =========================== Značka =========================== */
+
+.logo { display: inline-flex; align-items: center; gap: 0.625rem; color: var(--ink); text-decoration: none; }
+.logo-mark { flex: none; overflow: visible; }
+.logo-mark__spin { transform-origin: 32px 32px; transition: transform var(--t-slow) var(--spring); }
+.logo-mark__play { transform-origin: 34px 32px; transition: transform var(--t-med) var(--spring-pop); }
+.wordmark { display: inline-flex; align-items: baseline; gap: 0.1em; font-size: 1.375rem; letter-spacing: -0.035em; line-height: 1; white-space: nowrap; }
+.wordmark__open { font-weight: 400; color: var(--ink-2); }
+.wordmark__name { font-weight: 700; }
+.wordmark__tv {
+  align-self: center;
+  margin-left: 0.2em;
+  padding: 0.2em 0.42em 0.18em;
+  border-radius: 0.32em;
+  font-size: 0.52em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: linear-gradient(135deg, #ffb347, #ff5a36 50%, #e0245e);
+  box-shadow: 0 0.3em 1em -0.3em rgba(255, 90, 54, 0.6);
+}
+
+/* Značka vlevo nahoře (velké obrazovky). Při najetí se kruh pootočí a Play poskočí. */
+.brand {
+  position: fixed;
+  top: 2.4rem;
+  left: var(--gutter);
+  z-index: 30;
+  text-decoration: none;
+  transition: transform var(--t-med) var(--spring), opacity var(--t-med) var(--spring);
+}
+.brand.is-tucked { transform: translateY(-160%); opacity: 0; }
+.brand:hover .logo-mark__spin { transform: rotate(140deg); }
+.brand:hover .logo-mark__play { transform: scale(1.12); }
+@media (max-width: 1280px) { .brand .wordmark { display: none; } }
+
+.login__logo .wordmark { font-size: 1.75rem; }
+.login__logo .logo-mark { animation: markIn 900ms var(--spring-pop) both; }
+@keyframes markIn { from { opacity: 0; transform: scale(0.6) rotate(-90deg); } to { opacity: 1; transform: none; } }
+
 /* =========================== Typografie =========================== */
 
 .eyebrow {
@@ -777,9 +817,10 @@ img { display: block; }
   width: 3.5rem;
   height: 3.5rem;
   border-radius: 50%;
-  border: 0.25rem solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--ink);
-  animation: spin 900ms cubic-bezier(0.5, 0.15, 0.5, 0.85) infinite;
+  background: conic-gradient(from 20deg, rgba(255, 179, 71, 0) 0deg, #ffb347 60deg, #ff5a36 200deg, #e0245e 300deg, rgba(224, 36, 94, 0) 300.1deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 0.4rem), #000 calc(100% - 0.35rem));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 0.4rem), #000 calc(100% - 0.35rem));
+  animation: spin 1s cubic-bezier(0.5, 0.15, 0.5, 0.85) infinite;
 }
 .player__center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -885,7 +926,8 @@ img { display: block; }
     justify-content: space-between;
     padding: calc(0.75rem + env(safe-area-inset-top)) var(--gutter) 0;
   }
-  .mtop__brand { font-size: 1.375rem; font-weight: 700; letter-spacing: -0.03em; }
+  .mtop__brand .wordmark { font-size: 1.25rem; }
+  .brand { display: none; }
 
   .phero { position: relative; }
   .phero__media {

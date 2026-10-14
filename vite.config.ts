@@ -15,14 +15,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Sosáč TV (neoficiální)',
-        short_name: 'Sosáč TV',
-        description: 'Neoficiální klient pro Sosáč a Streamuj.tv',
+        name: 'OpenSosacTV',
+        short_name: 'OpenSosacTV',
+        description: 'Neoficiální klient pro Sosáč a Streamuj.tv ve stylu Apple TV a Netflixu',
         lang: 'cs',
         // Telefon je hlavní zařízení: standalone (se stavovým řádkem), libovolná orientace.
         display: 'standalone',
-        background_color: '#000000',
-        theme_color: '#000000',
+        background_color: '#050505',
+        theme_color: '#050505',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },

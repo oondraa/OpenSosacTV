@@ -8,6 +8,7 @@ import { useStage } from '../components/Backdrop';
 import { Button } from '../components/Buttons';
 import { FocusGroup, Pressable } from '../components/focus';
 import { FocusInput } from '../components/FocusInput';
+import { Logo } from '../components/Logo';
 import { useInitialFocus } from '../chrome';
 import { storage } from '../../lib/storage';
 import { navigate } from '../router';
@@ -68,8 +69,8 @@ function Login() {
     <div className="center">
       <div className="login bezel">
         <div className="bezel__core">
-          <span className="eyebrow">Přihlášení</span>
-          <h1 className="display display--md" style={{ marginTop: '1.25rem' }}>
+          <Logo size={40} className="login__logo" />
+          <h1 className="display display--md" style={{ marginTop: '1.5rem' }}>
             Filmy a seriály ze Sosáče. Konečně v pořádném kabátě.
           </h1>
           <FocusGroup className={separate ? 'login__grid' : ''} focusKey="login-form" style={separate ? undefined : { margin: '2rem 0 0.5rem', maxWidth: '26rem' }}>
@@ -199,7 +200,7 @@ function Settings() {
           <Button label="Odhlásit" icon={<SignOutIcon weight="bold" />} onPress={logout} />
         </FocusGroup>
         <p className="note">
-          API {settings.sosacDomain} · stream {settings.streamingProvider}. Neoficiální klient, nijak nespojený se Sosáčem ani Streamuj.tv.
+          API {settings.sosacDomain} · stream {settings.streamingProvider}. OpenSosacTV je neoficiální klient, nijak nespojený se Sosáčem ani Streamuj.tv.
         </p>
       </div>
     </div>
