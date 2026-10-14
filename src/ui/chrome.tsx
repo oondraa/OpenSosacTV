@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect } from 'react';
 import { doesFocusableExist, setFocus } from '@noriginmedia/norigin-spatial-navigation';
+import { isPointerMode } from './input';
 
 /** Sdílený stav "rámu" aplikace: schovaná navigace. */
 export const ChromeContext = createContext<{ setTucked(v: boolean): void }>({ setTucked: () => {} });
@@ -17,6 +18,8 @@ export function useInitialFocus(keys: string[], deps: unknown[] = []) {
     let tries = 0;
     let timer: ReturnType<typeof setTimeout>;
     const attempt = () => {
+      // Myš a dotyk fokus nepotřebují, na telefonu by se jen zvětšila první karta.
+      if (isPointerMode()) return;
       const key = keys.find((k) => doesFocusableExist(k));
       if (key) {
         void setFocus(key);

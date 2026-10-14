@@ -4,7 +4,10 @@ import { useRemoteKeys, useServices } from '../app';
 import { storage } from '../lib/storage';
 import { StageProvider } from './components/Backdrop';
 import { NavBar } from './components/NavBar';
+import { TabBar } from './components/TabBar';
+import { useIsPhone } from './useIsPhone';
 import { ChromeContext } from './chrome';
+import { initInputModeTracking } from './input';
 import { goBack, navigate, useRoute } from './router';
 import { Browse } from './screens/Browse';
 import { MovieDetail, SerialDetail } from './screens/Detail';
@@ -13,6 +16,8 @@ import { MyList } from './screens/MyList';
 import { Player } from './screens/Player';
 import { ONBOARDED_KEY, Profile } from './screens/Profile';
 import { Search } from './screens/Search';
+
+initInputModeTracking();
 
 initSpatialNavigation({
   // DOM fokus kvůli klávesnici na TV u textových polí; scroll řídíme sami.
@@ -36,6 +41,7 @@ function Shell() {
   const route = useRoute();
   const { ready, isLoggedIn } = useServices();
   const [tucked, setTucked] = useState(false);
+  const phone = useIsPhone();
   const chrome = useMemo(() => ({ setTucked }), []);
 
   // První spuštění bez účtu: nabídnout přihlášení (jde i přeskočit).
@@ -67,7 +73,8 @@ function Shell() {
   const isPlayer = route.name === 'play';
   return (
     <ChromeContext.Provider value={chrome}>
-      {!isPlayer && <NavBar route={route} tucked={tucked} />}
+      {!isPlayer && !phone && <NavBar route={route} tucked={tucked} />}
+      {!isPlayer && phone && <TabBar route={route} />}
       <main key={route.name === 'play' ? 'play' : `${route.name}-${'id' in route ? route.id : ''}`}>
         {route.name === 'home' && <Home />}
         {route.name === 'movies' && <Browse kind="movie" />}

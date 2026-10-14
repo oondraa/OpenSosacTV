@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { CaretLeftIcon, CaretRightIcon } from '@phosphor-icons/react';
 import type { MediaItem } from '../../api';
 import { Card, CardSkeleton } from './Card';
 import { FocusGroup } from './focus';
@@ -43,6 +44,13 @@ export function Row({ id, title, items, layout, loading, hasMore, onLoadMore, on
   return (
     <FocusGroup as="section" focusKey={`row-${id}`} className="row row--enter" style={{ animationDelay: `${Math.min(index, 6) * 70}ms` }} onFocusIn={onRowFocus}>
       <h2 className="section-title">{title}</h2>
+      {/* Šipky jen pro myš (CSS je ukáže při najetí), ovladač je nepotřebuje. */}
+      <button type="button" tabIndex={-1} className="row__arrow row__arrow--left" aria-label="Posunout doleva" onClick={() => page(trackRef.current, -1)}>
+        <CaretLeftIcon weight="bold" />
+      </button>
+      <button type="button" tabIndex={-1} className="row__arrow row__arrow--right" aria-label="Posunout doprava" onClick={() => page(trackRef.current, 1)}>
+        <CaretRightIcon weight="bold" />
+      </button>
       <div className="row__track no-scrollbar" ref={trackRef}>
         {loading && !items.length
           ? Array.from({ length: layout === 'wide' ? 5 : 9 }, (_, i) => <CardSkeleton key={i} layout={layout} />)
@@ -62,4 +70,9 @@ export function Row({ id, title, items, layout, loading, hasMore, onLoadMore, on
       </div>
     </FocusGroup>
   );
+}
+
+function page(track: HTMLElement | null, dir: 1 | -1) {
+  if (!track) return;
+  track.scrollBy({ left: dir * track.clientWidth * 0.8, behavior: 'smooth' });
 }
