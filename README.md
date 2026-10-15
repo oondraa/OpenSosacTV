@@ -2,15 +2,16 @@
 
 # OpenSosacTV
 
-Neoficiální klient pro [Sosáč](https://tv.sosac.tv) a [Streamuj.tv](https://www.streamuj.tv). Běží celý v prohlížeči, bez vlastního serveru.
+Neoficiální klient pro [Sosáč](https://tv.sosac.tv) a [Streamuj.tv](https://www.streamuj.tv). Dvě verze se stejnými funkcemi, obě bez vlastního serveru:
 
-**https://oondraa.github.io/OpenSosacTV/**
+- **Web:** https://oondraa.github.io/OpenSosacTV/ (telefon, tablet, prohlížeč)
+- **Windows:** [stáhnout OpenSosacTV.exe](https://github.com/oondraa/OpenSosacTV/releases/latest/download/OpenSosacTV.exe), program v Rustu
 
 ## Instalace
 
+- **Windows:** stáhni `OpenSosacTV.exe` a spusť ho, instalace není potřeba. Nové verze si stáhne sám (Profil → Aktualizace).
 - **iPhone:** Safari → Sdílet → Přidat na plochu
 - **Android:** Chrome → ⋮ → Nainstalovat aplikaci
-- **PC:** Chrome nebo Edge → ikona Nainstalovat v adresním řádku
 
 ## Přihlášení
 
@@ -22,6 +23,8 @@ Jeden účet může mít víc profilů bez hesel (Profil → Kdo se dívá). Ka�
 
 ## Vývoj
 
+### Web (`/`)
+
 ```bash
 npm install
 npm run dev     # http://localhost:5173
@@ -30,6 +33,19 @@ npm run build
 ```
 
 Push do `main` se automaticky nasadí na GitHub Pages.
+
+### Windows (`desktop/`)
+
+Rust a [egui](https://github.com/emilk/egui), titulková lišta jako v [OZBEAT](https://github.com/oondraa/OZBEAT). Přehrávač Streamuj běží ve WebView2, které je ve Windows 10 a 11 předinstalované.
+
+```bash
+cd desktop
+cargo run             # vývoj
+cargo test
+cargo build --release # target/release/OpenSosacTV.exe
+```
+
+Vydání: zvednout verzi v `desktop/Cargo.toml`, přidat novinky do `desktop/src/ui/changelog.rs` a pushnout tag `v<verze>`. GitHub Actions sestaví exe a zveřejní ho ve Vydáních.
 
 ## Licence
 

@@ -1,0 +1,37 @@
+name: Desktop release
+
+# Tag v0.2.0 a podobně: sestaví OpenSosacTV.exe a zveřejní ho jako vydání.
+# Z něj se aktualizuje nainstalovaná aplikace (desktop/src/update.rs).
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop
+      - run: cargo test --release
+      - run: cargo build --release
+      - name: Kontrolní součet
+        shell: bash
+        run: |
+          cp target/release/OpenSosacTV.exe .
+          sha256sum OpenSosacTV.exe > SHA256SUMS.txt
+      - name: Vydání
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" OpenSosacTV.exe SHA256SUMS.txt --title "OpenSosacTV $GITHUB_REF_NAME" --generate-notes
