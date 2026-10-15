@@ -1,4 +1,4 @@
 export { ServicesProvider, useServices, createQueryClient } from './ServicesProvider';
 export * from './hooks/catalog';
-export * from './hooks/player';
+export { ProfilesProvider, useProfileInitial, useProfiles } from './ProfilesProvider';
 export * from './hooks/remote';

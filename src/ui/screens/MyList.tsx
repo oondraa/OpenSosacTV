@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { SignInIcon } from '@phosphor-icons/react';
-import { flattenPages, useMovieList, useSerialList, useServices } from '../../app';
-import type { MediaItem } from '../../api';
+import { flattenPages, useMovieList, useProfiles, useSerialList, useServices } from '../../app';
+import type { MediaItem, Movie, Serial } from '../../api';
+import { isQueuedFor, ownersOf } from '../../lib/profiles';
 import { useStage } from '../components/Backdrop';
 import { Button } from '../components/Buttons';
 import { Row } from '../components/Row';
@@ -9,24 +10,71 @@ import { useChrome, useInitialFocus } from '../chrome';
 import { openDetail, play } from '../itemStore';
 import { navigate } from '../router';
 
-/** Můj seznam: rozkoukané, fronta, dokoukané. Vše z účtu na Sosáči. */
+type Rows = Array<{
+  id: string;
+  title: string;
+  items: MediaItem[];
+  layout: 'wide' | 'poster';
+  press: (item: MediaItem) => void;
+  q: { isLoading: boolean; isSuccess: boolean; hasNextPage: boolean; fetchNextPage: () => unknown };
+}>;
+
+/**
+ * Můj seznam z účtu na Sosáči. Rozkoukané a dokoukané jsou společné celému
+ * účtu, "Chci vidět" se dělí podle profilů (viz lib/profiles.ts).
+ */
 export function MyList() {
   const { isLoggedIn } = useServices();
+  const { state, profiles, active } = useProfiles();
   const [focused, setFocused] = useState<MediaItem>();
   const { setTucked } = useChrome();
   useStage(focused?.backdrop, 'dim');
   useEffect(() => () => setTucked(false), [setTucked]);
 
   const enabled = isLoggedIn;
-  const rows = [
-    { id: 'my-continue', title: 'Pokračovat ve sledování', q: useMovieList('unfinished', { enabled }), layout: 'wide' as const, press: play },
-    { id: 'my-serials', title: 'Rozkoukané seriály', q: useSerialList('unfinished', { enabled }), layout: 'wide' as const, press: openDetail },
-    { id: 'my-queue-movies', title: 'Chci vidět · filmy', q: useMovieList('queue', { enabled }), layout: 'poster' as const, press: openDetail },
-    { id: 'my-queue-serials', title: 'Chci vidět · seriály', q: useSerialList('queue', { enabled }), layout: 'poster' as const, press: openDetail },
-    { id: 'my-finished', title: 'Dokoukané', q: useMovieList('finished', { enabled }), layout: 'poster' as const, press: openDetail },
+  const continueMovies = useMovieList('unfinished', { enabled });
+  const continueSerials = useSerialList('unfinished', { enabled });
+  const queueMovies = useMovieList('queue', { enabled });
+  const queueSerials = useSerialList('queue', { enabled });
+  const finished = useMovieList('finished', { enabled });
+
+  const multi = profiles.length > 1;
+  const queued = [...flattenPages(queueMovies.data), ...flattenPages(queueSerials.data)];
+  // Načte další stránky obou front najednou, řady profilů z nich míchají.
+  const queueBoth = {
+    isLoading: queueMovies.isLoading || queueSerials.isLoading,
+    isSuccess: queueMovies.isSuccess && queueSerials.isSuccess,
+    hasNextPage: queueMovies.hasNextPage || queueSerials.hasNextPage,
+    fetchNextPage: () => {
+      if (queueMovies.hasNextPage) void queueMovies.fetchNextPage();
+      if (queueSerials.hasNextPage) void queueSerials.fetchNextPage();
+    },
+  };
+  const mine = (items: Array<Movie | Serial>) => items.filter((i) => isQueuedFor(state, active.id, i.kind, i.id));
+
+  const rows: Rows = [
+    { id: 'my-continue', title: 'Pokračovat ve sledování', items: flattenPages(continueMovies.data), q: continueMovies, layout: 'wide', press: play },
+    { id: 'my-serials', title: 'Rozkoukané seriály', items: flattenPages(continueSerials.data), q: continueSerials, layout: 'wide', press: openDetail },
+    { id: 'my-queue-movies', title: multi ? `${active.name} chce vidět · filmy` : 'Chci vidět · filmy', items: mine(flattenPages(queueMovies.data)), q: queueMovies, layout: 'poster', press: openDetail },
+    { id: 'my-queue-serials', title: multi ? `${active.name} chce vidět · seriály` : 'Chci vidět · seriály', items: mine(flattenPages(queueSerials.data)), q: queueSerials, layout: 'poster', press: openDetail },
+    // Přehled, co mají v seznamu ostatní profily.
+    ...profiles
+      .filter((p) => p.id !== active.id)
+      .map((p) => ({
+        id: `my-queue-${p.id}`,
+        title: `${p.name} chce vidět`,
+        items: queued.filter((i) => ownersOf(state, i.kind, i.id).some((o) => o.id === p.id)),
+        q: queueBoth,
+        layout: 'poster' as const,
+        press: openDetail,
+      })),
+    ...(multi
+      ? [{ id: 'my-queue-shared', title: 'Společné · přidané na webu nebo jinde', items: queued.filter((i) => ownersOf(state, i.kind, i.id).length === 0), q: queueBoth, layout: 'poster' as const, press: openDetail }]
+      : []),
+    { id: 'my-finished', title: 'Dokoukané', items: flattenPages(finished.data), q: finished, layout: 'poster', press: openDetail },
   ];
 
-  useInitialFocus(isLoggedIn ? rows.map((r) => `row-${r.id}`) : ['my-login'], [isLoggedIn, rows.some((r) => r.q.isSuccess)]);
+  useInitialFocus(isLoggedIn ? rows.filter((r) => r.items.length).map((r) => `row-${r.id}`) : ['my-login'], [isLoggedIn, rows.some((r) => r.items.length)]);
 
   if (!isLoggedIn) {
     return (
@@ -41,7 +89,7 @@ export function MyList() {
     );
   }
 
-  const empty = rows.every((r) => r.q.isSuccess && flattenPages(r.q.data as never).length === 0);
+  const empty = rows.every((r) => r.q.isSuccess && r.items.length === 0);
 
   return (
     <div className="screen no-scrollbar" style={{ paddingTop: '8rem' }}>
@@ -51,7 +99,7 @@ export function MyList() {
           id={r.id}
           index={i}
           title={r.title}
-          items={flattenPages(r.q.data as never)}
+          items={r.items}
           layout={r.layout}
           loading={r.q.isLoading}
           hasMore={r.q.hasNextPage}

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { doesFocusableExist, getCurrentFocusKey, setFocus } from '@noriginmedia/norigin-spatial-navigation';
-import { flattenPages, useHomeRow, useHomeRowDefs, useQueueIds } from '../../app';
+import { flattenPages, useHomeRow, useHomeRowDefs, useMyQueueIds, useProfileInitial, useProfiles } from '../../app';
+import { isQueuedFor } from '../../lib/profiles';
 import type { HomeRowDef } from '../../app';
 import type { MediaItem } from '../../api';
 import { formatEpisodeCode } from '../../api';
@@ -12,7 +13,6 @@ import { isPointerMode } from '../input';
 import { openDetail, play } from '../itemStore';
 import { useIsPhone } from '../useIsPhone';
 import { navigate } from '../router';
-import { useServices } from '../../app';
 import { Button } from '../components/Buttons';
 import { FadeImg } from '../components/Card';
 import { Logo } from '../components/Logo';
@@ -28,8 +28,8 @@ export function Home() {
   const [hero, setHero] = useState<MediaItem>();
   const rowsRef = useRef<HTMLDivElement>(null);
   const { setTucked } = useChrome();
-  const queuedMovies = useQueueIds('movie').data;
-  const queuedSerials = useQueueIds('serial').data;
+  const queuedMovies = useMyQueueIds('movie');
+  const queuedSerials = useMyQueueIds('serial');
 
   const phone = useIsPhone();
   // Telefon: obrázek je součástí stránky a scrolluje s ní, pevné pozadí ne.
@@ -131,7 +131,13 @@ function HomeRow({
   queuedIds?: Set<number>;
 }) {
   const q = useHomeRow(def);
-  const items = flattenPages(q.data);
+  const { state } = useProfiles();
+  const all = flattenPages(q.data);
+  // Fronta je jedna na účet, aktivní profil vidí jen svoje a společné.
+  const items = useMemo(
+    () => (def.list === 'queue' ? all.filter((i) => i.kind !== 'episode' && isQueuedFor(state, state.activeId, i.kind, i.id)) : all),
+    [all, def.list, state],
+  );
 
   useEffect(() => {
     if (q.isSuccess) onStatus(index, items.length ? 'ready' : 'empty', items[0]);
@@ -161,8 +167,7 @@ function HomeRow({
 
 /** Telefon: hlavička s profilem a velký náhled doporučeného titulu. */
 function PhoneHero({ item }: { item?: MediaItem }) {
-  const { session } = useServices();
-  const initial = session.sosac?.username?.[0]?.toUpperCase() ?? '?';
+  const initial = useProfileInitial();
   const img = item ? item.backdrop ?? (item.kind === 'episode' ? item.thumbnail : undefined) ?? item.poster : undefined;
   const isEp = item?.kind === 'episode';
   return (

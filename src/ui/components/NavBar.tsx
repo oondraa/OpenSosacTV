@@ -1,5 +1,5 @@
 import { MagnifyingGlassIcon } from '@phosphor-icons/react';
-import { useServices } from '../../app';
+import { useProfileInitial } from '../../app';
 import { navigate } from '../router';
 import type { Route } from '../router';
 import { FocusGroup, Pressable } from './focus';
@@ -17,8 +17,7 @@ const TABS: Array<{ route: Route; label: string }> = [
  * schová se a vrátí se, jakmile se fokus přesune nahoru.
  */
 export function NavBar({ route, tucked }: { route: Route; tucked: boolean }) {
-  const { session } = useServices();
-  const initial = session.sosac?.username?.[0]?.toUpperCase() ?? '?';
+  const initial = useProfileInitial();
   const go = (r: Route) => navigate(r, { replace: true });
 
   return (

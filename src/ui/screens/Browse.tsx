@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { flattenPages, useBrowse, useMovieList, useQueueIds, useSerialList } from '../../app';
+import { flattenPages, useBrowse, useMovieList, useMyQueueIds, useSerialList } from '../../app';
 import { GENRES } from '../../api';
 import type { Genre, MediaItem } from '../../api';
 import { useStage } from '../components/Backdrop';
@@ -52,7 +52,7 @@ export function Browse({ kind }: { kind: 'movie' | 'serial' }) {
   const serialList = useSerialList(presetType, { enabled: kind === 'serial' && isPreset });
   const movieGenre = useBrowse('movie', { by: 'by-genre', genre }, { enabled: kind === 'movie' && !isPreset });
   const serialGenre = useBrowse('serial', { by: 'by-genre', genre }, { enabled: kind === 'serial' && !isPreset });
-  const queued = useQueueIds(kind).data;
+  const queued = useMyQueueIds(kind);
 
   const q = isPreset ? (kind === 'movie' ? movieList : serialList) : kind === 'movie' ? movieGenre : serialGenre;
   const items: MediaItem[] = flattenPages<MediaItem>(q.data as never);

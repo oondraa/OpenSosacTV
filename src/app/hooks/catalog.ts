@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { InfiniteData } from '@tanstack/react-query';
 import type {
@@ -15,6 +15,8 @@ import type {
 } from '../../api';
 import { findContinueEpisode } from '../../api';
 import { useServices } from '../ServicesProvider';
+import { useProfiles } from '../ProfilesProvider';
+import { isQueuedFor } from '../../lib/profiles';
 
 /** Klíče pro React Query, aby šly cíleně invalidovat. */
 export const qk = {
@@ -26,7 +28,6 @@ export const qk = {
   serialEpisodes: (id: number) => ['sosac', 'serial-episodes', id] as const,
   queue: (kind: 'movie' | 'serial') => ['sosac', 'queue-ids', kind] as const,
   search: (kind: string, q: string) => ['sosac', 'search', kind, q] as const,
-  streamuj: ['streamuj', 'account'] as const,
 };
 
 /** Spojí stránky nekonečného seznamu do jednoho pole. */
@@ -205,6 +206,7 @@ export function useSerial(id: number | undefined, initial?: Serial) {
 
 /* ---------------- Fronta ---------------- */
 
+/** ID ve frontě "Chci vidět" celého účtu na Sosáči, bez ohledu na profil. */
 export function useQueueIds(kind: 'movie' | 'serial') {
   const { clients, ready, isLoggedIn } = useServices();
   return useQuery({
@@ -215,30 +217,57 @@ export function useQueueIds(kind: 'movie' | 'serial') {
   });
 }
 
-/** Přepínání "Chci vidět" s optimistickou aktualizací. */
+/** ID ve frontě, které patří aktivnímu profilu (jeho vlastní a společné). */
+export function useMyQueueIds(kind: 'movie' | 'serial'): Set<number> | undefined {
+  const server = useQueueIds(kind).data;
+  const { state } = useProfiles();
+  return useMemo(() => {
+    if (!server) return undefined;
+    return new Set([...server].filter((id) => isQueuedFor(state, state.activeId, kind, id)));
+  }, [server, state, kind]);
+}
+
+/**
+ * Přepínání "Chci vidět" pro aktivní profil. Štítek profilu se změní hned,
+ * na server jde zápis jen, když položka do fronty přibude nebo ji už nikdo nechce.
+ */
 export function useToggleQueue() {
   const { clients } = useServices();
+  const profiles = useProfiles();
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ item, queued }: { item: Movie | Serial; queued: boolean }) =>
-      clients.sosac.setQueued(item.kind, item.id, queued),
-    onMutate: async ({ item, queued }) => {
-      const key = qk.queue(item.kind);
-      await qc.cancelQueries({ queryKey: key });
-      const prev = qc.getQueryData<Set<number>>(key);
-      const next = new Set(prev);
-      if (queued) next.add(item.id);
-      else next.delete(item.id);
-      qc.setQueryData(key, next);
-      return { prev, key };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx) qc.setQueryData(ctx.key, ctx.prev);
-    },
+  const { mutate, isPending } = useMutation({
+    mutationFn: ({ item, add }: { item: Movie | Serial; add: boolean; rollback: () => void }) => clients.sosac.setQueued(item.kind, item.id, add),
+    onError: (_err, { rollback }) => rollback(),
     onSettled: (_d, _e, { item }) => {
       void qc.invalidateQueries({ queryKey: qk.list(item.kind, 'queue') });
     },
   });
+
+  const toggle = useCallback(
+    (item: Movie | Serial, queued: boolean) => {
+      const key = qk.queue(item.kind);
+      const prev = qc.getQueryData<Set<number>>(key);
+      const prevProfiles = profiles.state;
+      const server = profiles.setOwner(item.kind, item.id, queued, prev?.has(item.id) ?? false);
+      if (server === 'none') return;
+      void qc.cancelQueries({ queryKey: key });
+      const next = new Set(prev);
+      if (server === 'add') next.add(item.id);
+      else next.delete(item.id);
+      qc.setQueryData(key, next);
+      mutate({
+        item,
+        add: server === 'add',
+        rollback: () => {
+          qc.setQueryData(key, prev);
+          profiles.restore(prevProfiles);
+        },
+      });
+    },
+    [qc, profiles, mutate],
+  );
+
+  return { toggle, isPending };
 }
 
 /* ---------------- Home ---------------- */

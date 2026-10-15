@@ -9,6 +9,7 @@ import { useIsPhone } from './useIsPhone';
 import { ChromeContext } from './chrome';
 import { initInputModeTracking } from './input';
 import { hideSplash } from './splash';
+import { WhatsNew, useWhatsNew } from './components/WhatsNew';
 import { goBack, navigate, useRoute } from './router';
 import { Browse } from './screens/Browse';
 import { MovieDetail, SerialDetail } from './screens/Detail';
@@ -44,6 +45,8 @@ function Shell() {
   const [tucked, setTucked] = useState(false);
   const phone = useIsPhone();
   const chrome = useMemo(() => ({ setTucked }), []);
+  // Kdo už aplikaci dřív otevřel, dostane po aktualizaci přehled novinek.
+  const whatsNew = useWhatsNew(isLoggedIn || !!storage.get(ONBOARDED_KEY));
 
   // První spuštění bez účtu: nabídnout přihlášení (jde i přeskočit).
   useEffect(() => {
@@ -67,13 +70,14 @@ function Shell() {
       goBack();
       return true;
     }
-  }, route.name !== 'play');
+  }, route.name !== 'play' && !whatsNew.show);
 
   useEffect(() => {
     if (ready) hideSplash();
   }, [ready]);
 
   if (!ready) return null;
+  if (whatsNew.show) return <WhatsNew onClose={whatsNew.dismiss} />;
 
   const isPlayer = route.name === 'play';
   return (
