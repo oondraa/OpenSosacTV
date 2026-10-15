@@ -823,6 +823,29 @@ img { display: block; }
 .player__center { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* Co je nového (po aktualizaci) */
+.whatsnew {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: calc(3rem + env(safe-area-inset-top)) var(--gutter) calc(3rem + env(safe-area-inset-bottom));
+}
+.whatsnew__panel { width: min(40rem, 100%); animation: rise 900ms var(--spring) both; }
+.whatsnew__panel .bezel__core { display: grid; gap: 1rem; justify-items: start; }
+.whatsnew__mark { margin-bottom: 0.5rem; animation: markIn 900ms var(--spring-pop) both; }
+.whatsnew__list { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 1.25rem; }
+.whatsnew__list li {
+  display: grid;
+  gap: 0.25rem;
+  padding-left: 1rem;
+  border-left: 2px solid #ff5a36;
+  animation: rise 700ms var(--spring) both;
+}
+.whatsnew__list b { font-size: 1.1875rem; font-weight: 600; }
+.whatsnew__list span { color: var(--ink-2); line-height: 1.5; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
 }

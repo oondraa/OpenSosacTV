@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowCounterClockwiseIcon, CaretLeftIcon, CheckIcon, PlayIcon, PlusIcon } from '@phosphor-icons/react';
-import { useMovie, useQueueIds, useSerial, useServices, useToggleQueue } from '../../app';
+import { useMovie, useMyQueueIds, useProfiles, useQueueIds, useSerial, useServices, useToggleQueue } from '../../app';
+import { ownersOf } from '../../lib/profiles';
 import { formatEpisodeCode } from '../../api';
 import type { Episode, MediaItem, Movie, Serial } from '../../api';
 import { useStage } from '../components/Backdrop';
@@ -24,16 +25,29 @@ function useDetailChrome() {
 
 function QueueButton({ item }: { item: Movie | Serial }) {
   const { isLoggedIn } = useServices();
-  const queued = useQueueIds(item.kind).data?.has(item.id) ?? false;
-  const toggle = useToggleQueue();
+  const queued = useMyQueueIds(item.kind)?.has(item.id) ?? false;
+  const { toggle } = useToggleQueue();
   if (!isLoggedIn) return null;
   return (
     <Button
       focusKey="detail-queue"
       label={queued ? 'V seznamu' : 'Chci vidět'}
       icon={queued ? <CheckIcon weight="bold" /> : <PlusIcon weight="bold" />}
-      onPress={() => toggle.mutate({ item, queued: !queued })}
+      onPress={() => toggle(item, !queued)}
     />
+  );
+}
+
+/** Kdo z profilů titul chce vidět. Jen když je profilů víc. */
+function QueueOwners({ item }: { item: Movie | Serial }) {
+  const server = useQueueIds(item.kind).data;
+  const { state, profiles } = useProfiles();
+  if (profiles.length < 2 || !server?.has(item.id)) return null;
+  const owners = ownersOf(state, item.kind, item.id);
+  return (
+    <p className="note" style={{ margin: 0 }}>
+      {owners.length ? `Chce vidět: ${owners.map((p) => p.name).join(', ')}` : 'Ve společném seznamu (přidáno na webu nebo jinde)'}
+    </p>
   );
 }
 
@@ -145,6 +159,7 @@ export function MovieDetail({ id }: { id: number }) {
           {resume ? <Button label="Od začátku" icon={<ArrowCounterClockwiseIcon weight="bold" />} onPress={() => playFromStart(movie)} /> : null}
           <QueueButton item={movie} />
         </div>
+        <QueueOwners item={movie} />
         <Credits item={movie} />
       </FocusGroup>
     </div>
@@ -197,6 +212,7 @@ export function SerialDetail({ id }: { id: number }) {
           )}
           <QueueButton item={serial} />
         </div>
+        <QueueOwners item={serial} />
         {next && (
           <p className="note" style={{ margin: 0 }}>
             {formatEpisodeCode(next.season, next.episode)} · {next.episodeTitle}

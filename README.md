@@ -14,7 +14,11 @@ Neoficiální klient pro [Sosáč](https://tv.sosac.tv) a [Streamuj.tv](https://
 
 ## Přihlášení
 
-Stačí účet Sosáč. Videa přehrává přehrávač Streamuj, ve kterém se stačí jednou přihlásit. Hesla se neukládají, v zařízení zůstávají jen jejich otisky.
+Stačí účet Sosáč. Videa přehrává přehrávač Streamuj, ve kterém se stačí jednou přihlásit. Heslo se neukládá, v zařízení zůstává jen jeho otisk.
+
+## Profily
+
+Jeden účet může mít víc profilů bez hesel (Profil → Kdo se dívá). Každý má vlastní „Chci vidět“ a v Mém seznamu je vidět, co chtějí ostatní. Profily žijí jen v zařízení. Rozkoukané a dokoukané vede Sosáč na celý účet, ty jsou společné.
 
 ## Vývoj
 

@@ -11,11 +11,11 @@ import {
   loadPreferences,
   loadSession,
   login as apiLogin,
-  verifyStreamuj,
   savePreferences,
   saveSession,
 } from '../api';
-import type { ClientPreferences, Clients, LoginInput, ServiceSettings, Session, StreamujAccount } from '../api';
+import type { ClientPreferences, Clients, LoginInput, ServiceSettings, Session } from '../api';
+import { ProfilesProvider } from './ProfilesProvider';
 
 interface ServicesValue {
   /** false, dokud neproběhne discovery domén. */
@@ -26,11 +26,7 @@ interface ServicesValue {
   clients: Clients;
   /** Přihlášen k Sosáči (katalog, fronta, rozkoukané). */
   isLoggedIn: boolean;
-  /** Připojený účet Streamuj (plné přehrávání). */
-  hasStreamuj: boolean;
-  login(input: LoginInput, opts?: { requireStreamuj?: boolean }): Promise<StreamujAccount | null>;
-  /** Připojí nebo změní účet Streamuj u existující session. */
-  connectStreamuj(username: string, password: string): Promise<StreamujAccount>;
+  login(input: LoginInput): Promise<void>;
   logout(): void;
   updatePreferences(patch: Partial<ClientPreferences>): void;
 }
@@ -81,32 +77,14 @@ function ServicesState({ children }: { children: ReactNode }) {
   const clients = useMemo(() => createClients(settings, session, preferences), [settings, session, preferences]);
 
   const login = useCallback(
-    async (input: LoginInput, opts?: { requireStreamuj?: boolean }) => {
-      const result = await apiLogin(input, settings, preferences, opts);
-      saveSession(result.session);
-      setSession(result.session);
+    async (input: LoginInput) => {
+      const next = await apiLogin(input, settings, preferences);
+      saveSession(next);
+      setSession(next);
       // Data se liší podle uživatele (pozice, fronta), proto vše znovu.
       queryClient.clear();
-      return result.streamujAccount;
     },
     [settings, preferences, queryClient],
-  );
-
-  const connectStreamuj = useCallback(
-    async (username: string, password: string) => {
-      const { credentials, account } = await verifyStreamuj(username, password, settings, preferences);
-      setSession((prev) => {
-        const next: Session = {
-          ...prev,
-          streamuj: credentials,
-          streamujAccount: { userId: account.userId, vip: account.vip, vipUntil: account.vipUntil?.toISOString() },
-        };
-        saveSession(next);
-        return next;
-      });
-      return account;
-    },
-    [settings, preferences],
   );
 
   const logout = useCallback(() => {
@@ -131,16 +109,22 @@ function ServicesState({ children }: { children: ReactNode }) {
       preferences,
       clients,
       isLoggedIn: session.sosac !== null,
-      hasStreamuj: session.streamuj !== null,
       login,
-      connectStreamuj,
       logout,
       updatePreferences,
     }),
-    [ready, settings, session, preferences, clients, login, connectStreamuj, logout, updatePreferences],
+    [ready, settings, session, preferences, clients, login, logout, updatePreferences],
   );
 
-  return <ServicesContext.Provider value={value}>{children}</ServicesContext.Provider>;
+  // Profily patří k účtu: klíč zajistí, že se po přihlášení jiným účtem načtou jeho.
+  const account = session.sosac?.username ?? '';
+  return (
+    <ServicesContext.Provider value={value}>
+      <ProfilesProvider key={account} account={account}>
+        {children}
+      </ProfilesProvider>
+    </ServicesContext.Provider>
+  );
 }
 
 export function useServices(): ServicesValue {
